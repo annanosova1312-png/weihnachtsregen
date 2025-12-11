@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weihnachtsregen</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { margin:0; padding:0; font-family:'Nunito'; background:url('zimnii_risunok.jpg') center/cover no-repeat fixed; }
+    canvas { display:block; margin:0 auto; background:rgba(0,0,0,0.0); position:relative; z-index:1; }
+
+    /* Общий overlay для квизов и Game Over */
+    .overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.7); z-index:5; }
+    .hidden { display:none; }
+
+    /* Стартовое окно — БЕЗ затемнения */
+    #startOverlay { position:absolute; inset:0; align-items:center; justify-content:center; z-index:6; background:none; display:flex; }
+    #startOverlay.hidden { display:none !important; }
+
+    .start-box {
+      background:#024; padding:25px; border-radius:20px; color:white; text-align:center; width:60%;
+      box-shadow:0 0 20px rgba(0,0,0,0.4);
+    }
+
+    .quiz-card { cursor:pointer; border:2px solid white; border-radius:12px; padding:6px; background:rgba(255,255,255,0.2); }
+    .quiz-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+
+    /* Падающий снег */
+    #snow { position:absolute; inset:0; pointer-events:none; z-index:3; }
+  </style>
+</head>
+<body>
+  <audio id="bgMusic" src="Jingle_bells.mp3" loop></audio>
+
+  <h1 style="text-align:center;color:white;font-family:'Baloo 2';font-size:40px;text-shadow:0 0 10px #ffd700;">Weihnachtsregen 🎄</h1>
+
+  <div style="text-align:center;color:white;margin-bottom:10px;font-size:20px;">
+    Punkte: <span id="score">0</span> • Verpasst: <span id="misses">0</span>/3 • Fragen: <span id="quiz-progress">0</span>/10
+  </div>
+
+  <div style="position:relative; width:900px; margin:auto;">
+    <canvas id="gameCanvas" width="900" height="550"></canvas>
+    <img id="logo" src="frau_anna.png" alt="Frau Anna Logo" style="position:absolute; top:10px; left:10px; width:120px; z-index:2; pointer-events:none;">
+    <canvas id="snow" width="900" height="550"></canvas>
+
+    <!-- Стартовое окно (Вариант B) -->
+    <div id="startOverlay">
+      <div class="start-box">
+        <h2 style="font-family:'Baloo 2'; font-size:28px; margin-top:0;">Weihnachtsregen 🎁</h2>
+        <p style="font-size:18px;">Fang die fallenden Weihnachtsobjekte!</p>
+        <button id="startButton" style="padding:10px 20px; font-size:18px; border-radius:12px; cursor:pointer;">Start</button>
+      </div>
+    </div>
+
+    <!-- Квиз -->
+    <div id="quizOverlay" class="overlay hidden">
+      <div style="background:#153; padding:20px; border-radius:20px; color:white; width:70%; text-align:center;">
+        <h2 id="quizTitle">Wo ist ...?</h2>
+        <div class="quiz-grid" id="quizOptions"></div>
+      </div>
+    </div>
+
+    <!-- Game Over -->
+    <div id="gameOverOverlay" class="overlay hidden">
+      <div style="background:#300; padding:20px; border-radius:20px; color:white; width:60%; text-align:center;">
+        <h2>Spiel vorbei!</h2>
+        <p>Dein Punktestand: <span id="finalScore">0</span></p>
+        <button onclick="restartGame()">Nochmal spielen</button>
+      </div>
+    </div>
+
+    <!-- Congrats: Игра заканчивается, без Weiter spielen -->
+    <div id="congratsOverlay" class="overlay hidden">
+      <div style="background:#035; padding:20px; border-radius:20px; color:white; width:60%; text-align:center; position:relative;">
+        <button onclick="restartGame()" style="position:absolute; top:10px; right:15px; background:none; border:none; color:white; font-size:24px; cursor:pointer;">✖</button>
+        <h2 style="font-size:32px; color:#fff;">Hurra! 🎉</h2>
+        <p style="font-size:22px; color:#ffdd55;">Du hast alle 10 Fragen geschafft!</p>
+        <button onclick="restartGame()">Nochmal spielen</button>
+      </div>
+    </div>
+    </div>
+  </div>
+
+<script>
+// Музыка запускается при нажатии Start
+const bgMusic = document.getElementById("bgMusic");
+bgMusic.volume = 0.15;
+
+// Данные предметов
+const itemDefinitions = [
+  { key:'die_kerze', article:'die', word:'Kerze' },
+  { key:'die_glocke', article:'die', word:'Glocke' },
+  { key:'der_stern', article:'der', word:'Stern' },
+  { key:'die_schneeflocke', article:'die', word:'Schneeflocke' },
+  { key:'der_schnee', article:'der', word:'Schnee' },
+  { key:'der_weihnachtsbaum', article:'der', word:'Weihnachtsbaum' },
+  { key:'das_rendtier', article:'das', word:'Rendtier' },
+  { key:'der_engel', article:'der', word:'Engel' },
+  { key:'der_elf', article:'der', word:'Elf' },
+  { key:'der_nikolaus', article:'der', word:'Nikolaus' },
+  { key:'der_apfel', article:'der', word:'Apfel' },
+  { key:'die_schokolade', article:'die', word:'Schokolade' },
+  { key:'die_nuss', article:'die', word:'Nuss' },
+  { key:'die_mandarine', article:'die', word:'Mandarine' },
+  { key:'das_bonbon', article:'das', word:'Bonbon' },
+  { key:'der_schneemann', article:'der', word:'Schneemann' },
+  { key:'der_schlitten', article:'der', word:'Schlitten' },
+  { key:'die_kugel', article:'die', word:'Kugel' },
+  { key:'die_lichter', article:'die', word:'Lichter' },
+  { key:'das_geschenk', article:'das', word:'Geschenk' },
+  { key:'der_adventskranz', article:'der', word:'Adventskranz' },
+  { key:'der_weihnachtsmann', article:'der', word:'Weihnachtsmann' }
+];
+
+const TOTAL_QUESTIONS = 10;
+const canvas = document.getElementById("gameCanvas"), ctx = canvas.getContext("2d");
+const snowCanvas = document.getElementById("snow"), snowCtx = snowCanvas.getContext("2d");
+
+let score = 0, misses = 0, caught = 0;
+let items = [];
+let spawnTimer = 0;
+let spawnInterval = 1000;
+let gameActive = false;
+let inQuiz = false;
+let last = 0;
+
+let sack = { x:400, y:470, width:100, height:80, speed:400 };
+let remainingQuestions = [];
+let currentQuestion = null;
+let attempts = 0;
+let answered = 0;
+
+// Загрузка картинок и звуков
+const images = {}, audios = {};
+function loadAssets(){
+  const sackImg=new Image(); sackImg.src='sack.png'; images['sack']=sackImg;
+  itemDefinitions.forEach(i=>{ const im=new Image(); im.src=i.key+'.png'; images[i.key]=im; });
+  audios['klick']=new Audio('klick_auf.wav');
+  audios['nein']=new Audio('nein.wav');
+  audios['ja']=new Audio('ja.wav');
+  itemDefinitions.forEach(i=> audios[i.key]=new Audio(i.key+'.wav'));
+}
+loadAssets();
+
+// Управление
+let left=false, right=false;
+document.addEventListener("keydown", e=>{ if(e.key==='ArrowLeft') left=true; if(e.key==='ArrowRight') right=true; });
+document.addEventListener("keyup", e=>{ if(e.key==='ArrowLeft') left=false; if(e.key==='ArrowRight') right=false; });
+canvas.addEventListener("mousemove", e=>{
+  const r=canvas.getBoundingClientRect();
+  const x=(e.clientX-r.left)*(canvas.width/r.width);
+  sack.x=x-sack.width/2;
+});
+
+// Нажатие Start
+startButton.onclick = () => {
+  document.getElementById("startOverlay").classList.add("hidden");
+  bgMusic.play().catch(()=>{});
+  gameActive = true;
+};
+
+// Падающий снег
+let snowflakes=Array.from({length:120},()=>({x:Math.random()*900,y:Math.random()*550,r:Math.random()*3+1,s:Math.random()*1+0.5}));
+function drawSnow(){
+  snowCtx.clearRect(0,0,900,550);
+  snowflakes.forEach(f=>{
+    snowCtx.beginPath(); snowCtx.arc(f.x,f.y,f.r,0,Math.PI*2); snowCtx.fillStyle="white"; snowCtx.fill();
+    f.y+=f.s; if(f.y>550){f.y=-5; f.x=Math.random()*900;}
+  });
+}
+
+// Квиз
+function startQuiz(){
+  inQuiz=true;
+  currentQuestion=remainingQuestions.shift(); attempts=0;
+  document.getElementById("quizTitle").textContent =
+    currentQuestion.key === 'die_lichter'
+      ? 'Wo sind die Lichter?'
+      : `Wo ist ${currentQuestion.article} ${currentQuestion.word}?`
+  const options=[currentQuestion];
+  const others=itemDefinitions.filter(x=>x.key!==currentQuestion.key);
+  shuffle(others); options.push(...others.slice(0,2)); shuffle(options);
+  const box=document.getElementById("quizOptions"); box.innerHTML="";
+  options.forEach(opt=>{
+    const btn=document.createElement("div"); btn.className="quiz-card";
+    btn.dataset.key=opt.key;
+    btn.innerHTML=`<img src="${opt.key}.png" style="width:100%;"><div>${opt.article} ${opt.word}</div>`;
+    box.appendChild(btn);
+  });
+  document.getElementById("quizOverlay").classList.remove("hidden");
+  stopAllAudio(); audios[currentQuestion.key].play().catch(()=>{});
+}
+
+function stopAllAudio(){ for(const a of Object.values(audios)){ a.pause(); a.currentTime=0; }}
+
+document.getElementById("quizOptions").addEventListener("click", e=>{
+  const card=e.target.closest('.quiz-card'); if(!card||!currentQuestion) return;
+  const chosen=card.dataset.key.trim(), correct=currentQuestion.key.trim();
+  if(chosen===correct){
+    let bonus=attempts===0?3:attempts===1?2:1; score+=bonus; answered++;
+    stopAllAudio(); audios['ja'].play().catch(()=>{});
+    document.getElementById("quizOverlay").classList.add("hidden");
+    inQuiz=false; currentQuestion=null; updateHUD();
+    if(answered>=TOTAL_QUESTIONS) showCongrats();
+  } else {
+    attempts++; stopAllAudio(); audios['nein'].play().catch(()=>{});
+  }
+});
+
+// Завершение игры
+function endGame(){ gameActive=false;
+  document.getElementById("finalScore").textContent=score;
+  document.getElementById("gameOverOverlay").classList.remove("hidden"); }
+function restartGame(){ location.reload(); }
+function showCongrats(){ document.getElementById("congratsOverlay").classList.remove("hidden"); }
+
+// Игровая логика
+function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+function spawn(){ const def=itemDefinitions[Math.floor(Math.random()*itemDefinitions.length)];
+  items.push({key:def.key,x:Math.random()*800,y:-60,width:60,height:60,speed:120+Math.random()*80}); }
+function updateHUD(){ document.getElementById("score").textContent=score; document.getElementById("misses").textContent=misses; document.getElementById("quiz-progress").textContent=answered; }
+function update(dt){ if(!gameActive||inQuiz) return;
+  if(left) sack.x-=sack.speed*dt; if(right) sack.x+=sack.speed*dt;
+  if(sack.x<0) sack.x=0; if(sack.x+sack.width>900) sack.x=900-sack.width;
+  spawnTimer+=dt*1000; if(spawnTimer>spawnInterval){spawn(); spawnTimer=0;}
+  let remain=[];
+  for(const it of items){ it.y+=it.speed*dt;
+    if(checkColl(it,sack)){ score++; caught++; misses=0;
+      if(caught%5===0 && remainingQuestions.length>0) startQuiz(); continue; }
+    if(it.y>560){ misses++; if(misses>=3) endGame(); continue; }
+    remain.push(it);
+  }
+  items=remain; updateHUD();
+}
+function checkColl(a,b){return a.x<b.x+b.width && a.x+a.width>b.x && a.y<b.y+b.height && a.y+a.height>b.y;}
+function draw(){ ctx.clearRect(0,0,900,550);
+  items.forEach(it=> ctx.drawImage(images[it.key],it.x,it.y,it.width,it.height));
+  ctx.drawImage(images['sack'],sack.x,sack.y,sack.width,sack.height);
+  drawSnow(); }
+function loop(t){ if(!last) last=t; let dt=(t-last)/1000; last=t; update(dt); draw(); requestAnimationFrame(loop);} requestAnimationFrame(loop);
+
+// Старт
+remainingQuestions=shuffle([...itemDefinitions]).slice(0,TOTAL_QUESTIONS);
+updateHUD();
+</script>
+</body>
+</html>
