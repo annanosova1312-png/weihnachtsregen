@@ -24,7 +24,7 @@
       box-shadow:0 0 20px rgba(0,0,0,0.4);
     }
 
-    .quiz-card { cursor:pointer; border:2px solid white; border-radius:12px; padding:6px; background:rgba(255,255,255,0.2); }
+    .quiz-card" style="font-size:clamp(14px,4vw,20px)" { cursor:pointer; border:2px solid white; border-radius:12px; padding:6px; background:rgba(255,255,255,0.2); }
     .quiz-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
 
     /* Падающий снег */
@@ -50,7 +50,7 @@
       <div class="start-box">
         <h2 style="font-family:'Baloo 2'; font-size:28px; margin-top:0;">Weihnachtsregen 🎁</h2>
         <p style="font-size:18px;">Fang die fallenden Weihnachtsobjekte!</p>
-        <button id="startButton" style="padding:10px 20px; font-size:18px; border-radius:12px; cursor:pointer;">Start</button>
+        <button id="startButton" style="padding:14px 28px; font-size:clamp(18px,5vw,26px); border-radius:14px; cursor:pointer;">Start</button>
       </div>
     </div>
 
@@ -67,7 +67,7 @@
       <div style="background:#300; padding:20px; border-radius:20px; color:white; width:60%; text-align:center;">
         <h2>Spiel vorbei!</h2>
         <p>Dein Punktestand: <span id="finalScore">0</span></p>
-        <button onclick="restartGame()">Nochmal spielen</button>
+        <button onclick="restartGame()" style="padding:14px 28px; font-size:clamp(18px,5vw,26px); border-radius:14px; cursor:pointer;">Nochmal spielen</button>
       </div>
     </div>
 
@@ -217,7 +217,8 @@ document.getElementById("quizOptions").addEventListener("click", e=>{
     inQuiz=false; currentQuestion=null; updateHUD();
     if(answered>=TOTAL_QUESTIONS) showCongrats();
   } else {
-    attempts++; stopAllAudio(); audios['nein'].play().catch(()=>{});
+    attempts++; stopAllAudio(); navigator.vibrate?.(150);
+    audios['nein'].play().catch(()=>{});
   }
 });
 
