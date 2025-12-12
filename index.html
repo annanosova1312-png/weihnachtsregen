@@ -195,12 +195,13 @@ function startQuiz(){
   const others=itemDefinitions.filter(x=>x.key!==currentQuestion.key);
   shuffle(others); options.push(...others.slice(0,2)); shuffle(options);
   const box=document.getElementById("quizOptions"); box.innerHTML="";
-  options.forEach(opt=>{
-    const btn=document.createElement("div"); btn.className="quiz-card";
-    btn.dataset.key=opt.key;
-    btn.innerHTML=`<img src="${opt.key}.png" style="width:100%;"><div>${opt.article} ${opt.word}</div>`;
-    box.appendChild(btn);
-  });
+  options.forEach(opt => {
+  const btn = document.createElement("div");
+  btn.className = "quiz-card";
+  btn.dataset.key = opt.key;
+  btn.innerHTML = `<img src="${opt.key}.png" style="width:100%;">`;
+  box.appendChild(btn);
+});
   document.getElementById("quizOverlay").classList.remove("hidden");
   stopAllAudio(); audios[currentQuestion.key].play().catch(()=>{});
 }
